@@ -5,14 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vibe Travel - 隨心旅遊規劃</title>
     
-    <!-- Tailwind CSS -->
+    <!-- 核心套件 (使用更穩定的 CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React Core -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
@@ -29,18 +25,35 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
         }
         
-        .date-input-custom::-webkit-calendar-picker-indicator {
-            filter: invert(1);
-            opacity: 0.6;
+        /* 讓日期選擇器的圖示變深色一點，比較好看 */
+        input[type="date"]::-webkit-calendar-picker-indicator {
             cursor: pointer;
+            opacity: 0.6;
+            filter: invert(0.3);
         }
     </style>
 </head>
 <body>
-    <div id="root"><div class="text-center mt-20 text-slate-400">正在啟動 Vibe Travel...</div></div>
+    <div id="root">
+        <div style="text-align: center; margin-top: 50px; color: #64748b; font-family: sans-serif;">
+            <div style="margin-bottom: 20px;">正在啟動 Vibe Travel...</div>
+            <div style="font-size: 12px; opacity: 0.7;">如果很久沒反應，請嘗試重新整理或清除瀏覽器快取。</div>
+        </div>
+    </div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef, useMemo } = React;
+
+        // --- 安全的資料讀取函數 (避免白畫面) ---
+        const safeJSONParse = (key, fallback) => {
+            try {
+                const item = localStorage.getItem(key);
+                return item ? JSON.parse(item) : fallback;
+            } catch (e) {
+                console.error("Data Load Error:", e);
+                return fallback;
+            }
+        };
 
         // --- Icons ---
         const Icon = ({ children, className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>;
@@ -64,6 +77,7 @@
         const CalendarIcon = (p) => <Icon {...p}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></Icon>;
         const LoaderIcon = (p) => <Icon {...p} className={`${p.className} animate-spin`}><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></Icon>;
         const DownloadIcon = (p) => <Icon {...p}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></Icon>;
+        const AlertIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></Icon>;
 
         // --- Utils ---
         const getWeatherIcon = (code) => {
@@ -86,7 +100,7 @@
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         };
 
-        // --- Optimized Smart Search Input ---
+        // --- Components ---
         const SmartLocationInput = ({ value, onChange, placeholder, required, onSelectCallback }) => {
             const [suggestions, setSuggestions] = useState([]);
             const [showSuggestions, setShowSuggestions] = useState(false);
@@ -134,7 +148,7 @@
                             value={value}
                             onChange={(e) => handleSearch(e.target.value)}
                             onFocus={() => value.length >= 2 && setShowSuggestions(true)}
-                            className="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm text-slate-700 shadow-sm"
+                            className="w-full pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm text-slate-700 shadow-sm transition-all"
                         />
                         {isLoading && <div className="absolute right-3 top-1/2 -translate-y-1/2"><LoaderIcon className="w-4 h-4 text-indigo-500" /></div>}
                     </div>
@@ -152,7 +166,7 @@
             );
         };
 
-        // --- Add Activity Form (Ultra Clean - No Icon) ---
+        // --- Add Activity Form (Minimalist Time) ---
         const AddActivityForm = ({ onAdd }) => {
             const [time, setTime] = useState('10:00');
             const [location, setLocation] = useState('');
@@ -165,14 +179,14 @@
             };
             return (
                 <form onSubmit={handleSubmit} className="flex gap-2 w-full p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-200 shadow-sm mb-6">
-                     {/* Time: Cleaned up, no icon, reduced width, removed extra left padding */}
+                     {/* Time: Reduced width to 90px, no icon */}
                      <div className="relative flex-shrink-0">
                         <input 
                             value={time} 
                             onChange={(e) => setTime(e.target.value)} 
                             type="time" 
                             required 
-                            className="w-[90px] px-2 py-3 rounded-xl border border-slate-200 bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 text-center"
+                            className="w-[90px] h-full px-2 py-3 rounded-xl border border-slate-200 bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20 text-center"
                         />
                     </div>
                     <div className="flex-grow">
@@ -232,15 +246,10 @@
             );
         };
 
-        // --- Expense Tracker Component (Prominent Date) ---
+        // --- Expense Tracker (Fixed Layout & Prominent Date) ---
         const ExpenseTracker = ({ rates }) => {
-            const [expenses, setExpenses] = useState(() => {
-                const s = localStorage.getItem('vibeExpenses');
-                return s ? JSON.parse(s) : [];
-            });
-            const [tripDefaultCurrency, setTripDefaultCurrency] = useState(() => {
-                return localStorage.getItem('vibeExpenseDefaultCurrency') || 'JPY';
-            });
+            const [expenses, setExpenses] = useState(() => safeJSONParse('vibeExpenses', []));
+            const [tripDefaultCurrency, setTripDefaultCurrency] = useState(() => localStorage.getItem('vibeExpenseDefaultCurrency') || 'JPY');
 
             // State
             const [date, setDate] = useState(getTodayDate());
@@ -256,23 +265,21 @@
                 e.preventDefault();
                 if (!item || !amount || !rates) return;
                 
-                // Use default currency
-                const rate = rates[tripDefaultCurrency];
+                const rate = rates[tripDefaultCurrency] || 1;
                 const twdAmount = parseFloat(amount) / rate;
 
+                const newExpenseData = { 
+                    date, item, amount: parseFloat(amount), currency: tripDefaultCurrency, twdAmount 
+                };
+
                 if (editingId) {
-                    setExpenses(expenses.map(ex => ex.id === editingId ? { 
-                        ...ex, date, item, amount: parseFloat(amount), currency: tripDefaultCurrency, twdAmount 
-                    } : ex));
+                    setExpenses(expenses.map(ex => ex.id === editingId ? { ...ex, ...newExpenseData } : ex));
                     setEditingId(null);
                 } else {
-                    const newExpense = { 
-                        id: Date.now(), date, item, amount: parseFloat(amount), currency: tripDefaultCurrency, twdAmount 
-                    };
-                    setExpenses([newExpense, ...expenses]);
+                    setExpenses([{ id: Date.now(), ...newExpenseData }, ...expenses]);
                 }
                 
-                // Clear inputs, keep date
+                // Keep Date (Smart Memory), Clear others
                 setItem('');
                 setAmount('');
             };
@@ -288,7 +295,7 @@
                 setExpenses(expenses.filter(ex => ex.id !== id));
             };
 
-            const totalTWD = expenses.reduce((acc, curr) => acc + curr.twdAmount, 0);
+            const totalTWD = expenses.reduce((acc, curr) => acc + (curr.twdAmount || 0), 0);
 
             const expensesByDate = useMemo(() => {
                 const grouped = {};
@@ -296,15 +303,13 @@
                     const d = ex.date || '未設定日期';
                     if (!grouped[d]) grouped[d] = { items: [], total: 0 };
                     grouped[d].items.push(ex);
-                    grouped[d].total += ex.twdAmount;
+                    grouped[d].total += (ex.twdAmount || 0);
                 });
                 return Object.keys(grouped).sort().reverse().map(date => ({ date, ...grouped[date] }));
             }, [expenses]);
 
             return (
                 <div className="fade-in space-y-6 pb-20">
-                    
-                    {/* Settings Row */}
                     <div className="flex justify-between items-center px-2">
                         <h3 className="text-sm font-bold text-slate-500">財務設定</h3>
                         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
@@ -320,7 +325,6 @@
                         </div>
                     </div>
 
-                    {/* Summary - RED Text */}
                     <div className="bg-white rounded-3xl p-6 shadow-lg shadow-slate-200 border border-slate-100">
                         <div className="flex items-center gap-2 opacity-60 mb-1 text-slate-500">
                             <WalletIcon className="w-5 h-5"/> 旅費總支出 (預估)
@@ -330,21 +334,17 @@
                         </div>
                     </div>
 
-                    {/* Input Form - Prominent Date */}
                     <form onSubmit={handleSubmit} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-3">
-                        
-                        {/* Row 1: Date | Amount */}
                         <div className="flex gap-2 items-center h-12">
-                            {/* Date: Prominent and Longer */}
+                            {/* Date: Wide, Prominent, Green, No Icon */}
                             <input 
                                 type="date" 
                                 value={date} 
                                 onChange={e=>setDate(e.target.value)}
                                 required
-                                className="h-full w-[160px] px-3 bg-emerald-50 rounded-xl border-2 border-emerald-100 outline-none text-sm font-bold text-emerald-900 focus:ring-2 focus:ring-emerald-500/20 flex-shrink-0 shadow-sm"
+                                className="h-full w-[160px] px-3 bg-emerald-50 rounded-xl border-2 border-emerald-100 outline-none text-sm font-bold text-emerald-900 focus:ring-2 focus:ring-emerald-500/20 flex-shrink-0 shadow-sm date-input-custom"
                             />
-                            
-                            {/* Amount: Pure number input, no currency symbol */}
+                            {/* Amount: Pure Number, No label inside */}
                             <input 
                                 type="number" 
                                 placeholder="金額" 
@@ -354,8 +354,6 @@
                                 className="h-full w-full px-4 bg-slate-50 rounded-xl border border-slate-200 outline-none text-lg font-bold text-slate-800 focus:ring-2 focus:ring-emerald-500/20 placeholder:text-slate-300 placeholder:font-normal"
                             />
                         </div>
-
-                        {/* Row 2: Item Name (Big) | Button */}
                         <div className="flex gap-2 items-center h-12">
                             <div className="relative flex-grow h-full">
                                 <input 
@@ -373,7 +371,6 @@
                         </div>
                     </form>
 
-                    {/* List */}
                     <div className="space-y-6">
                         {expensesByDate.map(group => (
                             <div key={group.date} className="fade-in">
@@ -391,12 +388,8 @@
                                                 </div>
                                             </div>
                                             <div className="flex gap-1">
-                                                <button onClick={()=>handleEdit(ex)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors">
-                                                    <Edit3Icon className="w-4 h-4"/>
-                                                </button>
-                                                <button onClick={()=>handleDelete(ex.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-                                                    <Trash2Icon className="w-4 h-4"/>
-                                                </button>
+                                                <button onClick={()=>handleEdit(ex)} className="p-2 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"><Edit3Icon className="w-4 h-4"/></button>
+                                                <button onClick={()=>handleDelete(ex.id)} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"><Trash2Icon className="w-4 h-4"/></button>
                                             </div>
                                         </div>
                                     ))}
@@ -404,22 +397,17 @@
                             </div>
                         ))}
                         {expenses.length === 0 && (
-                            <div className="text-center text-slate-400 py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
-                                <WalletIcon className="w-8 h-8 mx-auto mb-2 opacity-20"/>
-                                尚無支出紀錄
-                            </div>
+                            <div className="text-center text-slate-400 py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200"><WalletIcon className="w-8 h-8 mx-auto mb-2 opacity-20"/>尚無支出紀錄</div>
                         )}
                     </div>
                 </div>
             )
         };
 
-        // --- Exchange Rate Widget ---
         const ExchangeRateWidget = ({ rates, updated }) => {
             const [amount, setAmount] = useState('');
             const [currency, setCurrency] = useState('JPY');
             const result = rates ? (amount / rates[currency]).toLocaleString('zh-TW', {style:'currency', currency:'TWD'}) : '---';
-
             return (
                 <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 fade-in">
                     <div className="flex items-center justify-between mb-6">
@@ -427,35 +415,23 @@
                     </div>
                     <div className="space-y-4">
                         <div className="flex gap-2">
-                            <select value={currency} onChange={e=>setCurrency(e.target.value)} className="bg-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none cursor-pointer">
-                                <option value="JPY">🇯🇵 JPY</option>
-                                <option value="USD">🇺🇸 USD</option>
-                                <option value="KRW">🇰🇷 KRW</option>
-                                <option value="EUR">🇪🇺 EUR</option>
-                                <option value="CNY">🇨🇳 CNY</option>
-                            </select>
+                            <select value={currency} onChange={e=>setCurrency(e.target.value)} className="bg-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none cursor-pointer"><option value="JPY">🇯🇵 JPY</option><option value="USD">🇺🇸 USD</option><option value="KRW">🇰🇷 KRW</option><option value="EUR">🇪🇺 EUR</option><option value="CNY">🇨🇳 CNY</option></select>
                             <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="外幣金額" className="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500/20" />
                         </div>
                         <div className="flex justify-center"><ArrowRightLeftIcon className="w-5 h-5 text-slate-300 rotate-90" /></div>
-                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-4 text-white text-center shadow-lg shadow-indigo-200">
-                            <div className="text-2xl font-bold">{result}</div>
-                        </div>
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-4 text-white text-center shadow-lg shadow-indigo-200"><div className="text-2xl font-bold">{result}</div></div>
                         <div className="text-center text-xs text-slate-400">更新: {updated}</div>
                     </div>
                 </div>
             );
         };
 
-        // --- Weather Widget ---
         const WeatherWidget = () => {
             const [forecast, setForecast] = useState(null);
             const [loading, setLoading] = useState(false);
             const [cityName, setCityName] = useState('');
             const [searchQuery, setSearchQuery] = useState('');
-            const [savedLocs, setSavedLocs] = useState(() => {
-                const s = localStorage.getItem('vibeSavedWeather');
-                return s ? JSON.parse(s) : [];
-            });
+            const [savedLocs, setSavedLocs] = useState(() => safeJSONParse('vibeSavedWeather', []));
             const [currentCoords, setCurrentCoords] = useState(null);
             useEffect(() => { localStorage.setItem('vibeSavedWeather', JSON.stringify(savedLocs)); }, [savedLocs]);
             const fetchWeather = async (lat, lon, name) => {
@@ -526,28 +502,26 @@
             );
         };
 
-        // --- Main App ---
         const VibeTravelApp = () => {
-            const [itinerary, setItinerary] = useState(() => {
-                const s = localStorage.getItem('vibeTravelData_v6');
-                const data = s ? JSON.parse(s) : [];
-                if (data.length === 0) return [{ id: Date.now(), dayTitle: 'Day 1', date: '', activities: [] }];
-                return data;
-            });
-            const [expenses, setExpenses] = useState(() => {
-                const s = localStorage.getItem('vibeExpenses');
-                return s ? JSON.parse(s) : [];
-            });
+            const [itinerary, setItinerary] = useState(() => safeJSONParse('vibeTravelData_v6', [{ id: Date.now(), dayTitle: 'Day 1', date: '', activities: [] }]));
             const [tripTitle, setTripTitle] = useState(() => localStorage.getItem('vibeTravelTitle_v6') || '我的 Vibe 之旅');
             const [isEditingTitle, setIsEditingTitle] = useState(false);
             const [rates, setRates] = useState(null);
             const [ratesUpdated, setRatesUpdated] = useState('');
             const [activeTab, setActiveTab] = useState(() => {
-                 const s = localStorage.getItem('vibeTravelData_v6');
-                 const data = s ? JSON.parse(s) : [];
+                 const data = safeJSONParse('vibeTravelData_v6', []);
                  if (data.length > 0) return data[0].id;
                  return 'temp';
             });
+
+            // Data Validation: Fix old corrupted data
+            useEffect(() => {
+                if (Array.isArray(itinerary) && itinerary.length === 0) {
+                    const newDay = { id: Date.now(), dayTitle: 'Day 1', date: '', activities: [] };
+                    setItinerary([newDay]);
+                    setActiveTab(newDay.id);
+                }
+            }, []);
 
             useEffect(() => {
                 const fetchGlobalRates = async () => {
@@ -572,16 +546,15 @@
 
             const addDay = () => {
                 const newDay = { id: Date.now(), dayTitle: `Day ${itinerary.length + 1}`, date: '', activities: [] };
-                setItinerary([...itinerary, newDay]);
+                const newItinerary = [...itinerary, newDay];
+                setItinerary(newItinerary);
                 setActiveTab(newDay.id);
             };
 
             const deleteDay = (id) => {
-                if(confirm('刪除這天？')) {
-                    const newItinerary = itinerary.filter(d => d.id !== id);
-                    setItinerary(newItinerary);
-                    if(activeTab === id) setActiveTab(newItinerary.length > 0 ? newItinerary[0].id : 'exchange');
-                }
+                const newItinerary = itinerary.filter(d => d.id !== id);
+                setItinerary(newItinerary);
+                if(activeTab === id) setActiveTab(newItinerary.length > 0 ? newItinerary[0].id : 'exchange');
             };
 
             const addActivity = (dayId, time, location) => {
@@ -613,12 +586,11 @@
                  setItinerary(itinerary.map(d => d.id === dayId ? { ...d, date: newDate } : d));
             };
 
-            // Export Data Function - CSV Format (Clean amount, Currency in Header, Removed Currency Column)
+            // Export CSV (Optimized: No Currency Column, Header Info)
             const handleExport = () => {
                 const tripCurrency = localStorage.getItem('vibeExpenseDefaultCurrency') || 'JPY';
                 let csvContent = `\uFEFF旅遊標題,${tripTitle}\n匯出日期,${new Date().toLocaleDateString()}\n\n`;
                 
-                // 1. Itinerary
                 csvContent += `--- 行程規劃 ---\n天數,日期,時間,地點\n`;
                 itinerary.forEach(day => {
                     const dayStr = day.dayTitle;
@@ -632,11 +604,9 @@
                     }
                 });
 
-                // 2. Expenses Sorted by Date with Subtotals
-                // Removed Currency column, Header includes currency info
                 csvContent += `\n--- 費用紀錄 ---\n日期,消費項目,原幣金額 (${tripCurrency}),台幣(預估)\n`;
                 
-                const savedExpenses = JSON.parse(localStorage.getItem('vibeExpenses') || '[]');
+                const savedExpenses = safeJSONParse('vibeExpenses', []);
                 savedExpenses.sort((a, b) => {
                     const dateA = a.date || '9999-99-99';
                     const dateB = b.date || '9999-99-99';
@@ -656,11 +626,10 @@
                     currentGroupDate = exDate;
                     const item = `"${ex.item.replace(/"/g, '""')}"`;
                     
-                    // Fixed: Pure numbers in CSV, removed redundant currency column
-                    csvContent += `${exDate},${item},${ex.amount},${Math.round(ex.twdAmount)}\n`;
+                    csvContent += `${exDate},${item},${ex.amount},${Math.round(ex.twdAmount || 0)}\n`;
                     
-                    dailyTotalTWD += ex.twdAmount;
-                    grandTotalTWD += ex.twdAmount;
+                    dailyTotalTWD += (ex.twdAmount || 0);
+                    grandTotalTWD += (ex.twdAmount || 0);
 
                     if (index === savedExpenses.length - 1) {
                          csvContent += `,,,本日小計 ${Math.round(dailyTotalTWD)}\n`;
@@ -680,6 +649,14 @@
                 URL.revokeObjectURL(url);
             };
 
+            // Reset Data Button (Safety Feature)
+            const handleReset = () => {
+                if(confirm("確定要重置所有資料嗎？這將會清除您目前所有的行程和費用紀錄。")) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+
             const currentDay = itinerary.find(d => d.id === activeTab);
 
             return (
@@ -698,7 +675,10 @@
                                     </h1>
                                 )}
                             </div>
-                            <button onClick={handleExport} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors" title="匯出 CSV 報表"><DownloadIcon className="w-5 h-5"/></button>
+                            <div className="flex gap-2">
+                                <button onClick={handleReset} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-full transition-colors" title="重置資料"><AlertIcon className="w-5 h-5"/></button>
+                                <button onClick={handleExport} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-full transition-colors" title="匯出 CSV 報表"><DownloadIcon className="w-5 h-5"/></button>
+                            </div>
                         </div>
                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
                             {itinerary.map((day) => (
@@ -708,6 +688,7 @@
                             ))}
                             <button onClick={addDay} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-600 transition-colors"><PlusIcon className="w-4 h-4" /></button>
                             <div className="w-[1px] h-6 bg-slate-200 mx-1 flex-shrink-0"></div>
+                            
                             <button onClick={() => setActiveTab('expenses')} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'expenses' ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
                                 <WalletIcon className="w-3 h-3"/> 費用
                             </button>
