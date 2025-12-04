@@ -5,435 +5,541 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vibe Travel - 隨心旅遊規劃</title>
     
-    <!-- 1. 引入 Tailwind CSS (樣式) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- 2. 引入 React 和 React DOM (核心) -->
+    <!-- React Core -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- 3. 引入 Babel (翻譯器) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
         body { font-family: 'Noto Sans TC', sans-serif; background-color: #f8fafc; }
-        /* 簡單的載入動畫 */
-        .loading { text-align: center; margin-top: 50px; color: #64748b; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        .fade-in { animation: fadeIn 0.3s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
-    <!-- 如果 React 沒跑出來，使用者會看到這行字 -->
-    <div id="root"><div class="loading">正在載入 Vibe Travel...<br>如果很久沒反應，請檢查網路連線。</div></div>
+    <div id="root"><div class="text-center mt-20 text-slate-400">正在啟動 Vibe Travel...</div></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // --- 內建圖示 (SVG Components) ---
-        // 這樣就不需要依賴外部 lucide-react 庫，保證不會壞
-        const Icon = ({ children, className }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                {children}
-            </svg>
-        );
+        // --- Icons ---
+        const Icon = ({ children, className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{children}</svg>;
+        const PlusIcon = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></Icon>;
+        const Trash2Icon = (p) => <Icon {...p}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></Icon>;
+        const NavigationIcon = (p) => <Icon {...p}><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></Icon>;
+        const ClockIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></Icon>;
+        const Edit3Icon = (p) => <Icon {...p}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></Icon>;
+        const CheckIcon = (p) => <Icon {...p}><polyline points="20 6 9 17 4 12"></polyline></Icon>;
+        const RefreshCwIcon = (p) => <Icon {...p}><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></Icon>;
+        const CalculatorIcon = (p) => <Icon {...p}><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="8" y1="18" x2="8" y2="18"></line></Icon>;
+        const ArrowRightLeftIcon = (p) => <Icon {...p}><path d="m16 7 5 5-5 5"/><path d="M21 12H3"/><path d="m8 17-5-5 5-5"/></Icon>;
+        const MapPinIcon = (p) => <Icon {...p}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></Icon>;
+        const SearchIcon = (p) => <Icon {...p}><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></Icon>;
+        const DollarSignIcon = (p) => <Icon {...p}><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></Icon>;
+        const CloudIcon = (p) => <Icon {...p}><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></Icon>;
+        const SunIcon = (p) => <Icon {...p}><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></Icon>;
+        const CloudRainIcon = (p) => <Icon {...p}><line x1="16" y1="13" x2="16" y2="21"></line><line x1="8" y1="13" x2="8" y2="21"></line><line x1="12" y1="15" x2="12" y2="23"></line><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"></path></Icon>;
+        const SaveIcon = (p) => <Icon {...p}><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></Icon>;
+        const HeartIcon = (p) => <Icon {...p}><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></Icon>;
 
-        const MapIcon = (props) => <Icon {...props}><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></Icon>;
-        const PlusIcon = (props) => <Icon {...props}><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></Icon>;
-        const Trash2Icon = (props) => <Icon {...props}><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></Icon>;
-        const NavigationIcon = (props) => <Icon {...props}><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></Icon>;
-        const CalendarIcon = (props) => <Icon {...props}><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></Icon>;
-        const ClockIcon = (props) => <Icon {...props}><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></Icon>;
-        const SunIcon = (props) => <Icon {...props}><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></Icon>;
-        const XIcon = (props) => <Icon {...props}><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></Icon>;
-        const Edit3Icon = (props) => <Icon {...props}><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></Icon>;
-        const CheckIcon = (props) => <Icon {...props}><polyline points="20 6 9 17 4 12"></polyline></Icon>;
-        const RefreshCwIcon = (props) => <Icon {...props}><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></Icon>;
-        const CalculatorIcon = (props) => <Icon {...props}><rect x="4" y="2" width="16" height="20" rx="2"></rect><line x1="8" y1="6" x2="16" y2="6"></line><line x1="16" y1="14" x2="16" y2="14"></line><line x1="12" y1="14" x2="12" y2="14"></line><line x1="8" y1="14" x2="8" y2="14"></line><line x1="16" y1="18" x2="16" y2="18"></line><line x1="12" y1="18" x2="12" y2="18"></line><line x1="8" y1="18" x2="8" y2="18"></line></Icon>;
-        const ArrowRightLeftIcon = (props) => <Icon {...props}><path d="m16 7 5 5-5 5"/><path d="M21 12H3"/><path d="m8 17-5-5 5-5"/></Icon>;
-        const MapPinIcon = (props) => <Icon {...props}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></Icon>;
+        // --- Utils ---
+        const getWeatherIcon = (code) => {
+            if (code <= 1) return <SunIcon className="w-8 h-8 text-yellow-500" />;
+            if (code <= 3) return <CloudIcon className="w-8 h-8 text-slate-400" />;
+            if (code >= 51) return <CloudRainIcon className="w-8 h-8 text-blue-400" />;
+            return <CloudIcon className="w-8 h-8 text-slate-400" />;
+        };
+        const getWeatherDesc = (code) => {
+             if (code === 0) return '晴朗';
+             if (code <= 3) return '多雲';
+             if (code <= 48) return '霧';
+             if (code <= 67) return '細雨';
+             if (code <= 82) return '陣雨';
+             if (code <= 99) return '雷雨';
+             return '多雲';
+        };
 
-        // --- 主程式開始 ---
-
-        const VibeTravelApp = () => {
-            // 1. 行程資料
-            const [itinerary, setItinerary] = useState(() => {
-                const saved = localStorage.getItem('vibeTravelData_v2');
-                if (saved) {
-                    try { return JSON.parse(saved); } catch (e) { return []; }
-                }
-                return [
-                    {
-                        id: Date.now(),
-                        dayTitle: 'Day 1',
-                        activities: [
-                            { id: 1, time: '10:00', location: '成田機場', note: '抵達' },
-                            { id: 2, time: '13:00', location: '淺草寺', note: '午餐與參拜' },
-                        ],
-                    },
-                ];
-            });
-
-            // 2. 標題
-            const [tripTitle, setTripTitle] = useState(() => {
-                return localStorage.getItem('vibeTravelTitle') || '我的精彩旅程';
-            });
-            const [isEditingTitle, setIsEditingTitle] = useState(false);
-            const titleInputRef = useRef(null);
-
-            // 3. 匯率狀態
-            const [rates, setRates] = useState(null);
-            const [loadingRates, setLoadingRates] = useState(true);
-            const [currencyAmount, setCurrencyAmount] = useState('');
-            const [selectedCurrency, setSelectedCurrency] = useState('JPY');
-            const [lastUpdateDate, setLastUpdateDate] = useState('');
-
-            // Effects
-            useEffect(() => {
-                localStorage.setItem('vibeTravelData_v2', JSON.stringify(itinerary));
-                localStorage.setItem('vibeTravelTitle', tripTitle);
-            }, [itinerary, tripTitle]);
+        // --- Common Component: Smart Search Input ---
+        const SmartLocationInput = ({ value, onChange, placeholder, required, onSelectCallback }) => {
+            const [suggestions, setSuggestions] = useState([]);
+            const [showSuggestions, setShowSuggestions] = useState(false);
+            const wrapperRef = useRef(null);
 
             useEffect(() => {
-                fetchRates();
+                const handleClickOutside = (event) => {
+                    if (wrapperRef.current && !wrapperRef.current.contains(event.target)) setShowSuggestions(false);
+                };
+                document.addEventListener("mousedown", handleClickOutside);
+                return () => document.removeEventListener("mousedown", handleClickOutside);
             }, []);
 
-            useEffect(() => {
-                if (isEditingTitle && titleInputRef.current) {
-                    titleInputRef.current.focus();
-                }
-            }, [isEditingTitle]);
-
-            // Functions
-            const fetchRates = async () => {
-                setLoadingRates(true);
+            const handleSearch = async (query) => {
+                onChange(query);
+                if (query.length < 2) { setSuggestions([]); return; }
                 try {
-                    const response = await fetch('https://api.exchangerate-api.com/v4/latest/TWD');
+                    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&accept-language=zh-TW&limit=5`);
                     const data = await response.json();
-                    setRates(data.rates);
-                    const date = new Date(data.time_last_updated * 1000);
-                    setLastUpdateDate(date.toLocaleDateString('zh-TW'));
-                    setLoadingRates(false);
-                } catch (error) {
-                    console.error("匯率失敗", error);
-                    setLoadingRates(false);
-                }
+                    setSuggestions(data);
+                    setShowSuggestions(true);
+                } catch (e) { console.error(e); }
             };
 
-            const calculateTWD = () => {
-                if (!rates || !currencyAmount) return '0';
-                const rate = rates[selectedCurrency];
-                const twd = parseFloat(currencyAmount) / rate;
-                return new Intl.NumberFormat('zh-TW', { style: 'currency', currency: 'TWD' }).format(twd);
-            };
-
-            const getDisplayRate = () => {
-                if (!rates) return '---';
-                const rate = 1 / rates[selectedCurrency];
-                return `1 ${selectedCurrency} ≈ ${rate.toFixed(4)} TWD`;
-            };
-
-            const addDay = () => {
-                const newDayNum = itinerary.length + 1;
-                const newDay = { id: Date.now(), dayTitle: `Day ${newDayNum}`, activities: [] };
-                setItinerary([...itinerary, newDay]);
-            };
-
-            const deleteDay = (dayId) => {
-                if (confirm('確定要刪除這整天的行程嗎？')) {
-                    setItinerary(itinerary.filter((day) => day.id !== dayId));
-                }
-            };
-
-            const addActivity = (dayId, time, location) => {
-                if (!location.trim()) return;
-                setItinerary(itinerary.map((day) => {
-                    if (day.id === dayId) {
-                        return {
-                            ...day,
-                            activities: [...day.activities, { id: Date.now(), time, location, note: '' }]
-                                .sort((a, b) => a.time.localeCompare(b.time)),
-                        };
-                    }
-                    return day;
-                }));
-            };
-
-            const deleteActivity = (dayId, activityId) => {
-                setItinerary(itinerary.map((day) => {
-                    if (day.id === dayId) {
-                        return {
-                            ...day,
-                            activities: day.activities.filter((act) => act.id !== activityId),
-                        };
-                    }
-                    return day;
-                }));
-            };
-
-            const openGoogleMaps = (location) => {
-                const query = encodeURIComponent(location);
-                window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+            const handleSelect = (item) => {
+                const name = item.display_name.split(',')[0];
+                onChange(name);
+                setShowSuggestions(false);
+                if (onSelectCallback) onSelectCallback(item); // 把完整資訊回傳 (包含 lat, lon)
             };
 
             return (
-                <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-slate-800 p-4 md:p-8 font-sans selection:bg-pink-200 pb-20">
-                    
-                    {/* Header */}
-                    <header className="max-w-4xl mx-auto mb-8 text-center">
-                        <div className="inline-flex items-center justify-center p-3 bg-white/60 backdrop-blur-md rounded-2xl shadow-sm mb-4">
-                            <MapIcon className="w-6 h-6 text-indigo-600 mr-2" />
-                            <span className="text-sm font-bold text-indigo-600 tracking-wider uppercase">Vibe Travel Planner</span>
+                <div className="relative flex-grow" ref={wrapperRef}>
+                    <input
+                        type="text"
+                        placeholder={placeholder}
+                        required={required}
+                        value={value}
+                        onChange={(e) => handleSearch(e.target.value)}
+                        onFocus={() => value.length >= 2 && setShowSuggestions(true)}
+                        className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm text-slate-700 shadow-sm"
+                    />
+                    {showSuggestions && suggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-xl border border-slate-100 z-50 overflow-hidden">
+                            {suggestions.map((item, idx) => (
+                                <div key={idx} onClick={() => handleSelect(item)} className="px-3 py-2 hover:bg-indigo-50 cursor-pointer text-sm text-slate-700 border-b border-slate-50 flex items-center gap-2">
+                                    <SearchIcon className="w-3 h-3 text-slate-400" /><span className="truncate">{item.display_name}</span>
+                                </div>
+                            ))}
                         </div>
-                        
-                        <div className="flex justify-center items-center gap-3 group mb-2">
-                            {isEditingTitle ? (
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        ref={titleInputRef}
-                                        type="text"
-                                        value={tripTitle}
-                                        onChange={(e) => setTripTitle(e.target.value)}
-                                        onBlur={() => setIsEditingTitle(false)}
-                                        onKeyDown={(e) => e.key === 'Enter' && setIsEditingTitle(false)}
-                                        className="text-3xl md:text-5xl font-extrabold text-center bg-transparent border-b-2 border-indigo-500 focus:outline-none text-indigo-900 w-full max-w-lg"
-                                    />
-                                    <button onClick={() => setIsEditingTitle(false)} className="p-2 bg-indigo-100 rounded-full text-indigo-600">
-                                        <CheckIcon className="w-5 h-5" />
-                                    </button>
-                                </div>
-                            ) : (
-                                <h1 
-                                    onClick={() => setIsEditingTitle(true)}
-                                    className="text-3xl md:text-5xl font-extrabold text-slate-800 cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-3"
-                                    title="點擊修改標題"
-                                >
-                                    {tripTitle}
-                                    <Edit3Icon className="w-6 h-6 text-slate-300 group-hover:text-indigo-400 transition-colors" />
-                                </h1>
-                            )}
-                        </div>
-                    </header>
-
-                    {/* Exchange Rate Calculator */}
-                    <section className="max-w-3xl mx-auto mb-10">
-                        <div className="bg-white/80 backdrop-blur-xl rounded-3xl p-6 shadow-xl border border-white/50 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-200 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -translate-y-1/2 translate-x-1/2"></div>
-
-                            <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-4 relative z-10">
-                                <div className="flex items-center gap-2 text-indigo-900 font-bold text-lg">
-                                    <div className="p-2 bg-indigo-100 rounded-lg">
-                                        <CalculatorIcon className="w-5 h-5 text-indigo-600" />
-                                    </div>
-                                    即時匯率換算
-                                </div>
-                                <div className="text-xs text-slate-400 flex items-center gap-1 bg-slate-50 px-3 py-1 rounded-full">
-                                    基準日: {lastUpdateDate || '載入中...'}
-                                    <button onClick={fetchRates} className={`p-1 hover:bg-slate-200 rounded-full transition-all ${loadingRates ? 'animate-spin' : ''}`}>
-                                        <RefreshCwIcon className="w-3 h-3" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center relative z-10">
-                                <div className="col-span-12 md:col-span-5 flex rounded-xl overflow-hidden border border-slate-200 shadow-sm">
-                                    <select 
-                                        value={selectedCurrency} 
-                                        onChange={(e) => setSelectedCurrency(e.target.value)}
-                                        className="bg-slate-100 px-3 py-3 font-bold text-slate-700 outline-none border-r border-slate-200 cursor-pointer hover:bg-slate-200 transition-colors"
-                                    >
-                                        <option value="JPY">🇯🇵 JPY</option>
-                                        <option value="USD">🇺🇸 USD</option>
-                                        <option value="KRW">🇰🇷 KRW</option>
-                                    </select>
-                                    <input
-                                        type="number"
-                                        placeholder="輸入金額"
-                                        value={currencyAmount}
-                                        onChange={(e) => setCurrencyAmount(e.target.value)}
-                                        className="flex-grow px-4 py-3 outline-none text-slate-800 font-medium placeholder:text-slate-300"
-                                    />
-                                </div>
-
-                                <div className="col-span-12 md:col-span-2 flex justify-center">
-                                    <ArrowRightLeftIcon className="w-6 h-6 text-slate-300 md:rotate-0 rotate-90" />
-                                </div>
-
-                                <div className="col-span-12 md:col-span-5 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-3 text-white shadow-lg shadow-indigo-200 flex flex-col items-center justify-center min-h-[60px]">
-                                    <div className="text-2xl font-bold tracking-wide">
-                                        {loadingRates ? 'Loading...' : calculateTWD()}
-                                    </div>
-                                    <div className="text-[10px] opacity-70 mt-1 font-mono">
-                                        {getDisplayRate()}
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* Main Itinerary */}
-                    <main className="max-w-3xl mx-auto space-y-8">
-                        <div className="flex justify-between items-center px-2">
-                            <span className="text-lg font-bold text-slate-700 flex items-center gap-2">
-                                <CalendarIcon className="w-5 h-5 text-purple-500" />
-                                行程規劃表
-                            </span>
-                            <button
-                                onClick={addDay}
-                                className="group flex items-center gap-2 bg-slate-900 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-full transition-all duration-300 shadow-lg hover:shadow-indigo-500/30 active:scale-95"
-                            >
-                                <PlusIcon className="w-4 h-4 group-hover:rotate-90 transition-transform" />
-                                <span>新增一天</span>
-                            </button>
-                        </div>
-
-                        {itinerary.length === 0 ? (
-                            <div className="text-center py-20 bg-white/40 backdrop-blur-sm rounded-3xl border border-white/50">
-                                <SunIcon className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
-                                <h3 className="text-xl font-bold text-slate-600">還沒有行程</h3>
-                                <p className="text-slate-400 mt-2">快點擊上方按鈕，開始規劃你的 {tripTitle} 吧！</p>
-                            </div>
-                        ) : (
-                            <div className="space-y-8">
-                                {itinerary.map((day, index) => (
-                                    <DayCard
-                                        key={day.id}
-                                        day={day}
-                                        index={index}
-                                        onAddActivity={addActivity}
-                                        onDeleteActivity={deleteActivity}
-                                        onDeleteDay={deleteDay}
-                                        onNavigate={openGoogleMaps}
-                                    />
-                                ))}
-                            </div>
-                        )}
-                    </main>
-
-                    <footer className="max-w-4xl mx-auto mt-20 text-center text-slate-400 text-sm">
-                        <p>© 2025 Vibe Travel App. Currency data provided by Exchangerate-API.</p>
-                    </footer>
+                    )}
                 </div>
             );
         };
 
-        const DayCard = ({ day, index, onAddActivity, onDeleteActivity, onDeleteDay, onNavigate }) => {
-            const [newTime, setNewTime] = useState('09:00');
-            const [newLocation, setNewLocation] = useState('');
-
-            const handleAdd = (e) => {
+        // --- Top Input Form (Moved to top) ---
+        const AddActivityForm = ({ onAdd }) => {
+            const [time, setTime] = useState('10:00');
+            const [location, setLocation] = useState('');
+            const handleSubmit = (e) => {
                 e.preventDefault();
-                if (!newLocation) return;
-                onAddActivity(day.id, newTime, newLocation);
-                setNewLocation(''); 
+                if (location.trim()) {
+                    onAdd(time, location);
+                    setLocation('');
+                }
+            };
+            return (
+                <form onSubmit={handleSubmit} className="flex gap-2 w-full p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-slate-200 shadow-sm mb-6">
+                     <div className="relative w-28 flex-shrink-0">
+                        <ClockIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"/>
+                        <input value={time} onChange={(e) => setTime(e.target.value)} type="time" required className="w-full pl-8 pr-2 py-3 rounded-xl border border-slate-200 bg-white text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500/20"/>
+                    </div>
+                    <div className="flex-grow">
+                        <SmartLocationInput value={location} onChange={setLocation} placeholder="搜尋景點加入行程..." required={true} />
+                    </div>
+                    <button type="submit" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-4 py-2 font-bold shadow-md shadow-indigo-200 active:scale-95 transition-transform flex-shrink-0"><PlusIcon className="w-6 h-6"/></button>
+                </form>
+            );
+        };
+
+        // --- Activity Item ---
+        const ActivityItem = ({ act, onDelete, onUpdate }) => {
+            const [isEditing, setIsEditing] = useState(false);
+            const [tempTime, setTempTime] = useState(act.time);
+            const [tempLoc, setTempLoc] = useState(act.location);
+
+            const handleSave = () => {
+                if(tempLoc.trim()){
+                    onUpdate(act.id, tempTime, tempLoc);
+                    setIsEditing(false);
+                }
             };
 
-            return (
-                <div className="relative bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/60 overflow-hidden transition-all hover:shadow-2xl duration-500 group/card">
-                    <div className="bg-gradient-to-r from-indigo-500/5 to-purple-500/5 p-5 flex justify-between items-center border-b border-indigo-100">
-                        <h2 className="text-xl font-bold text-indigo-900 flex items-center gap-2">
-                            <span className="bg-white text-indigo-600 px-3 py-1 rounded-lg shadow-sm text-sm border border-indigo-50">
-                                Day {index + 1}
-                            </span>
-                            <span className="opacity-70 text-sm font-normal text-indigo-800">
-                                {day.activities.length} 個景點
-                            </span>
-                        </h2>
-                        <button
-                            onClick={() => onDeleteDay(day.id)}
-                            className="text-slate-300 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors opacity-0 group-hover/card:opacity-100"
-                            title="刪除這一天"
-                        >
-                            <Trash2Icon className="w-5 h-5" />
-                        </button>
+            if(isEditing) {
+                return (
+                    <div className="bg-white p-4 rounded-2xl border-2 border-indigo-200 flex flex-col gap-3 shadow-lg z-10 relative">
+                        <div className="flex items-center gap-2">
+                            <input type="time" value={tempTime} onChange={e=>setTempTime(e.target.value)} className="p-2 rounded-lg border border-slate-200 text-sm font-bold w-32"/>
+                            <div className="flex-grow">
+                                <SmartLocationInput value={tempLoc} onChange={setTempLoc} placeholder="修改地點" required={true}/>
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2">
+                            <button onClick={()=>setIsEditing(false)} className="px-3 py-1 text-sm text-slate-500 hover:bg-slate-100 rounded-lg">取消</button>
+                            <button onClick={handleSave} className="px-3 py-1 text-sm text-white bg-indigo-600 rounded-lg flex items-center gap-1 shadow-md"><SaveIcon className="w-3 h-3"/> 儲存</button>
+                        </div>
                     </div>
+                )
+            }
 
-                    <div className="p-5 space-y-4">
-                        {day.activities.length === 0 && (
-                            <div className="text-center py-8 text-slate-400 text-sm italic border-2 border-dashed border-slate-200 rounded-xl bg-slate-50/50">
-                                <MapPinIcon className="w-8 h-8 mx-auto mb-2 opacity-20" />
-                                這天還沒有行程，去哪裡冒險呢？
+            return (
+                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-start gap-3 transition-transform hover:-translate-y-0.5 group">
+                    <div className="bg-indigo-50 text-indigo-600 text-xs font-bold px-2 py-1 rounded-lg mt-0.5 border border-indigo-100">{act.time}</div>
+                    <div className="flex-grow">
+                        <div className="font-bold text-slate-800 text-lg cursor-pointer hover:text-indigo-600" onClick={()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(act.location)}`, '_blank')}>{act.location}</div>
+                        <div className="flex items-center gap-2 mt-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                            <button onClick={()=>window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(act.location)}`, '_blank')} className="text-xs flex items-center gap-1 bg-slate-100 hover:bg-indigo-100 text-slate-600 hover:text-indigo-600 px-3 py-1.5 rounded-full transition-colors">
+                                <NavigationIcon className="w-3 h-3"/> 導航
+                            </button>
+                            <button onClick={()=>setIsEditing(true)} className="text-xs flex items-center gap-1 text-slate-400 hover:text-indigo-500 px-2 py-1.5">
+                                <Edit3Icon className="w-3 h-3"/> 編輯
+                            </button>
+                            <button onClick={onDelete} className="text-xs text-slate-300 hover:text-red-400 px-2 py-1.5">刪除</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // --- Widgets ---
+        const ExchangeRateWidget = () => {
+            const [rates, setRates] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [amount, setAmount] = useState('');
+            const [currency, setCurrency] = useState('JPY');
+            const [updated, setUpdated] = useState('');
+
+            const fetchRates = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch('https://api.exchangerate-api.com/v4/latest/TWD');
+                    const data = await res.json();
+                    setRates(data.rates);
+                    setUpdated(new Date(data.time_last_updated * 1000).toLocaleDateString());
+                    setLoading(false);
+                } catch (e) { setLoading(false); }
+            };
+            useEffect(() => { fetchRates(); }, []);
+            const result = rates ? (amount / rates[currency]).toLocaleString('zh-TW', {style:'currency', currency:'TWD'}) : '---';
+
+            return (
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-200 fade-in">
+                    <div className="flex items-center justify-between mb-6">
+                        <h3 className="font-bold text-slate-700 flex items-center gap-2"><CalculatorIcon className="w-5 h-5 text-indigo-500" /> 匯率換算</h3>
+                        <button onClick={fetchRates} className={`p-2 bg-slate-100 rounded-full hover:bg-slate-200 ${loading ? 'animate-spin' : ''}`}><RefreshCwIcon className="w-4 h-4 text-slate-500"/></button>
+                    </div>
+                    <div className="space-y-4">
+                        <div className="flex gap-2">
+                            <select value={currency} onChange={e=>setCurrency(e.target.value)} className="bg-slate-100 rounded-xl px-4 py-3 font-bold text-slate-700 outline-none cursor-pointer">
+                                <option value="JPY">🇯🇵 JPY</option>
+                                <option value="USD">🇺🇸 USD</option>
+                                <option value="KRW">🇰🇷 KRW</option>
+                                <option value="EUR">🇪🇺 EUR</option>
+                                <option value="CNY">🇨🇳 CNY</option>
+                            </select>
+                            <input type="number" value={amount} onChange={e=>setAmount(e.target.value)} placeholder="外幣金額" className="flex-grow bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                        </div>
+                        <div className="flex justify-center"><ArrowRightLeftIcon className="w-5 h-5 text-slate-300 rotate-90" /></div>
+                        <div className="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-xl p-4 text-white text-center shadow-lg shadow-indigo-200">
+                            <div className="text-2xl font-bold">{result}</div>
+                        </div>
+                        <div className="text-center text-xs text-slate-400">更新: {updated}</div>
+                    </div>
+                </div>
+            );
+        };
+
+        const WeatherWidget = () => {
+            const [forecast, setForecast] = useState(null);
+            const [loading, setLoading] = useState(false);
+            const [cityName, setCityName] = useState('');
+            const [searchQuery, setSearchQuery] = useState('');
+            const [savedLocs, setSavedLocs] = useState(() => {
+                const s = localStorage.getItem('vibeSavedWeather');
+                return s ? JSON.parse(s) : [];
+            });
+            const [currentCoords, setCurrentCoords] = useState(null); // {lat, lon, name}
+
+            // 儲存地點變更
+            useEffect(() => {
+                localStorage.setItem('vibeSavedWeather', JSON.stringify(savedLocs));
+            }, [savedLocs]);
+
+            // 載入天氣
+            const fetchWeather = async (lat, lon, name) => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
+                    const data = await res.json();
+                    setForecast(data);
+                    setCityName(name);
+                    setCurrentCoords({ lat, lon, name });
+                    setLoading(false);
+                } catch (e) {
+                    console.error(e);
+                    setLoading(false);
+                }
+            };
+
+            // 處理搜尋選取
+            const handleSelectLocation = (item) => {
+                setSearchQuery(item.display_name.split(',')[0]); // 顯示簡短名稱
+                fetchWeather(item.lat, item.lon, item.display_name.split(',')[0]);
+            };
+
+            // 儲存/取消儲存
+            const toggleSave = () => {
+                if (!currentCoords) return;
+                const exists = savedLocs.find(l => l.name === currentCoords.name);
+                if (exists) {
+                    setSavedLocs(savedLocs.filter(l => l.name !== currentCoords.name));
+                } else {
+                    setSavedLocs([...savedLocs, currentCoords]);
+                }
+            };
+
+            const isSaved = currentCoords && savedLocs.find(l => l.name === currentCoords.name);
+
+            return (
+                <div className="fade-in space-y-4">
+                     
+                     {/* 搜尋區塊 */}
+                     <div className="bg-white p-4 rounded-3xl shadow-sm border border-slate-200">
+                        <div className="mb-2 text-sm font-bold text-slate-500">查詢天氣</div>
+                        <div className="flex gap-2">
+                             <SmartLocationInput 
+                                value={searchQuery} 
+                                onChange={setSearchQuery} 
+                                placeholder="輸入城市 (如: 京都, 倫敦)" 
+                                required={false} 
+                                onSelectCallback={handleSelectLocation}
+                             />
+                        </div>
+
+                        {/* 儲存的城市 Chips */}
+                        {savedLocs.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-4">
+                                {savedLocs.map((loc, idx) => (
+                                    <button 
+                                        key={idx}
+                                        onClick={() => { setSearchQuery(loc.name); fetchWeather(loc.lat, loc.lon, loc.name); }}
+                                        className={`px-3 py-1 rounded-full text-xs font-bold transition-colors ${cityName === loc.name ? 'bg-blue-100 text-blue-600 border border-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                    >
+                                        {loc.name}
+                                    </button>
+                                ))}
                             </div>
                         )}
+                     </div>
 
-                        <div className="relative">
-                            {day.activities.length > 0 && (
-                                <div className="absolute left-[2.85rem] top-4 bottom-4 w-0.5 bg-indigo-100 rounded-full"></div>
-                            )}
-
-                            <ul className="space-y-4">
-                                {day.activities.map((activity) => (
-                                    <li key={activity.id} className="group relative flex items-start gap-4 animate-in slide-in-from-bottom-2 duration-300">
-                                        <div className="flex-shrink-0 w-20 pt-1">
-                                            <div className="bg-white border border-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1.5 rounded-lg text-center shadow-sm z-10 relative">
-                                                {activity.time}
+                     {/* 天氣顯示區塊 */}
+                     {loading && <div className="text-center py-10 text-slate-400">正在讀取天氣資料...</div>}
+                     
+                     {!loading && forecast && (
+                         <div className="animate-in fade-in slide-in-from-bottom-4">
+                             <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl p-6 text-white shadow-lg shadow-blue-200 mb-6 relative overflow-hidden">
+                                <div className="relative z-10 flex justify-between items-start">
+                                    <div>
+                                        <h3 className="text-2xl font-bold flex items-center gap-2">{cityName}</h3>
+                                        <p className="text-blue-100 text-sm mt-1">未來 7 天預報</p>
+                                    </div>
+                                    <button onClick={toggleSave} className={`p-2 rounded-full transition-colors ${isSaved ? 'bg-white text-red-500' : 'bg-white/20 text-white hover:bg-white/30'}`}>
+                                        <HeartIcon className={`w-6 h-6 ${isSaved ? 'fill-current' : ''}`} />
+                                    </button>
+                                </div>
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-white rounded-full mix-blend-overlay opacity-10 -translate-y-1/2 translate-x-1/2"></div>
+                             </div>
+                             
+                             <div className="grid grid-cols-1 gap-3">
+                                {forecast.daily.time.map((date, idx) => (
+                                    <div key={idx} className="bg-white p-4 rounded-2xl flex items-center justify-between border border-slate-100 shadow-sm">
+                                        <div className="flex items-center gap-4">
+                                            <div className="text-slate-500 font-bold w-12 text-sm">{idx === 0 ? '今天' : date.slice(5)}</div>
+                                            {getWeatherIcon(forecast.daily.weathercode[idx])}
+                                        </div>
+                                        <div className="text-right">
+                                            <div className="font-bold text-slate-700">{getWeatherDesc(forecast.daily.weathercode[idx])}</div>
+                                            <div className="text-xs text-slate-400">
+                                                {forecast.daily.temperature_2m_min[idx]}° - {forecast.daily.temperature_2m_max[idx]}°C
                                             </div>
                                         </div>
-
-                                        <div className="flex-grow bg-white border border-slate-100 rounded-2xl p-4 shadow-sm group-hover:shadow-md transition-all hover:-translate-y-0.5 z-10 flex justify-between items-center">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500">
-                                                    <MapPinIcon className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <h4 className="font-bold text-slate-800 text-lg leading-tight cursor-pointer hover:text-indigo-600 transition-colors" onClick={() => onNavigate(activity.location)}>
-                                                        {activity.location}
-                                                    </h4>
-                                                </div>
-                                            </div>
-
-                                            <div className="flex items-center gap-2">
-                                                <button
-                                                    onClick={() => onNavigate(activity.location)}
-                                                    className="p-2.5 bg-indigo-100 hover:bg-indigo-600 hover:text-white text-indigo-600 rounded-xl transition-all active:scale-95"
-                                                    title="Google 導航"
-                                                >
-                                                    <NavigationIcon className="w-4 h-4" />
-                                                </button>
-                                                <button
-                                                    onClick={() => onDeleteActivity(day.id, activity.id)}
-                                                    className="p-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
-                                                >
-                                                    <XIcon className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </li>
+                                    </div>
                                 ))}
-                            </ul>
+                             </div>
+                         </div>
+                     )}
+
+                     {!loading && !forecast && (
+                         <div className="text-center py-10 text-slate-400">
+                             <CloudIcon className="w-12 h-12 mx-auto mb-2 opacity-20"/>
+                             請搜尋城市以查看天氣
+                         </div>
+                     )}
+                </div>
+            );
+        };
+
+        // --- Main App ---
+        const VibeTravelApp = () => {
+            const [itinerary, setItinerary] = useState(() => {
+                const s = localStorage.getItem('vibeTravelData_v5');
+                const data = s ? JSON.parse(s) : [];
+                // 如果沒有資料，預設產生 Day 1
+                if (data.length === 0) {
+                    return [{ id: Date.now(), dayTitle: 'Day 1', activities: [] }];
+                }
+                return data;
+            });
+            const [tripTitle, setTripTitle] = useState(() => localStorage.getItem('vibeTravelTitle_v5') || '我的 Vibe 之旅');
+            const [isEditingTitle, setIsEditingTitle] = useState(false);
+            
+            // 頁籤狀態：預設優先顯示 Day 1 (即 itinerary[0])
+            const [activeTab, setActiveTab] = useState(() => {
+                 // 這裡直接取 itinerary 的第一個 ID (因為上面確保了 itinerary 至少有一個 Day 1)
+                 // 注意：這裡是初始化，需要重新讀取一次或依賴上面的 state 初始化邏輯 (React 18 concurrent mode safe)
+                 const s = localStorage.getItem('vibeTravelData_v5');
+                 const data = s ? JSON.parse(s) : [];
+                 if (data.length > 0) return data[0].id;
+                 return 'temp_placeholder'; // 稍後 useEffect 會修正
+            });
+
+            // 確保 activeTab 正確指向第一個 Day (如果還沒設定)
+            useEffect(() => {
+                if (activeTab === 'temp_placeholder' && itinerary.length > 0) {
+                    setActiveTab(itinerary[0].id);
+                }
+            }, [itinerary]);
+
+            useEffect(() => {
+                localStorage.setItem('vibeTravelData_v5', JSON.stringify(itinerary));
+                localStorage.setItem('vibeTravelTitle_v5', tripTitle);
+            }, [itinerary, tripTitle]);
+
+            const addDay = () => {
+                const newDay = { id: Date.now(), dayTitle: `Day ${itinerary.length + 1}`, activities: [] };
+                setItinerary([...itinerary, newDay]);
+                setActiveTab(newDay.id);
+            };
+
+            const deleteDay = (id) => {
+                if(confirm('刪除這天？')) {
+                    const newItinerary = itinerary.filter(d => d.id !== id);
+                    setItinerary(newItinerary);
+                    if(activeTab === id) {
+                        // 刪除後，如果有其他天則跳第一天，否則跳匯率頁
+                        setActiveTab(newItinerary.length > 0 ? newItinerary[0].id : 'exchange');
+                    }
+                }
+            };
+
+            const addActivity = (dayId, time, location) => {
+                setItinerary(itinerary.map(d => {
+                    if(d.id === dayId) {
+                        return { ...d, activities: [...d.activities, { id: Date.now(), time, location }].sort((a,b)=>a.time.localeCompare(b.time)) };
+                    }
+                    return d;
+                }));
+            };
+
+            const updateActivity = (dayId, actId, newTime, newLocation) => {
+                 setItinerary(itinerary.map(d => {
+                    if(d.id === dayId) {
+                         const updatedActivities = d.activities.map(a => 
+                            a.id === actId ? { ...a, time: newTime, location: newLocation } : a
+                         ).sort((a,b)=>a.time.localeCompare(b.time));
+                         return { ...d, activities: updatedActivities };
+                    }
+                    return d;
+                }));
+            };
+
+            const deleteActivity = (dayId, actId) => {
+                setItinerary(itinerary.map(d => d.id === dayId ? { ...d, activities: d.activities.filter(a => a.id !== actId) } : d));
+            };
+
+            const currentDay = itinerary.find(d => d.id === activeTab);
+
+            return (
+                <div className="min-h-screen pb-20 max-w-md mx-auto md:max-w-3xl md:border-x md:border-slate-200 bg-white md:shadow-2xl flex flex-col">
+                    
+                    <div className="bg-white sticky top-0 z-20 px-4 pt-6 pb-2 border-b border-slate-100/50 backdrop-blur-md bg-white/80">
+                         <div className="flex justify-center items-center gap-2 mb-4">
+                            {isEditingTitle ? (
+                                <div className="flex items-center gap-2 w-full max-w-xs animate-in fade-in zoom-in">
+                                    <input autoFocus type="text" value={tripTitle} onChange={e=>setTripTitle(e.target.value)} onBlur={()=>setIsEditingTitle(false)} onKeyDown={e=>e.key==='Enter'&&setIsEditingTitle(false)} className="text-xl font-bold text-center w-full border-b-2 border-indigo-500 outline-none bg-transparent"/>
+                                    <button onClick={()=>setIsEditingTitle(false)}><CheckIcon className="w-5 h-5 text-indigo-600"/></button>
+                                </div>
+                            ) : (
+                                <h1 onClick={()=>setIsEditingTitle(true)} className="text-xl font-bold text-slate-800 flex items-center gap-2 cursor-pointer hover:text-indigo-600 transition-colors">
+                                    {tripTitle} <Edit3Icon className="w-4 h-4 text-slate-300"/>
+                                </h1>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-2">
+                            {itinerary.map((day) => (
+                                <button 
+                                    key={day.id}
+                                    onClick={() => setActiveTab(day.id)}
+                                    className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all ${activeTab === day.id ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+                                >
+                                    {day.dayTitle}
+                                </button>
+                            ))}
+                            
+                            <button onClick={addDay} className="flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 hover:bg-indigo-100 hover:text-indigo-600 transition-colors">
+                                <PlusIcon className="w-4 h-4" />
+                            </button>
+                            
+                            <div className="w-[1px] h-6 bg-slate-200 mx-1 flex-shrink-0"></div>
+
+                            <button onClick={() => setActiveTab('exchange')} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'exchange' ? 'bg-purple-600 text-white shadow-lg shadow-purple-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                <DollarSignIcon className="w-3 h-3"/> 匯率
+                            </button>
+                            <button onClick={() => setActiveTab('weather')} className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-bold transition-all flex items-center gap-1 ${activeTab === 'weather' ? 'bg-blue-500 text-white shadow-lg shadow-blue-200' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>
+                                <CloudIcon className="w-3 h-3"/> 天氣
+                            </button>
                         </div>
                     </div>
 
-                    <form onSubmit={handleAdd} className="bg-slate-50/80 p-4 border-t border-slate-100">
-                        <div className="flex flex-col sm:flex-row gap-3">
-                            <div className="relative">
-                                <ClockIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="time"
-                                    required
-                                    value={newTime}
-                                    onChange={(e) => setNewTime(e.target.value)}
-                                    className="w-full sm:w-auto pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm font-medium text-slate-700 shadow-sm transition-all"
-                                />
+                    <div className="p-4 bg-slate-50 flex-grow min-h-[500px]">
+                        
+                        {activeTab === 'exchange' && (
+                            <div className="max-w-sm mx-auto mt-4"><ExchangeRateWidget /></div>
+                        )}
+
+                        {activeTab === 'weather' && (
+                            <div className="max-w-sm mx-auto mt-4"><WeatherWidget /></div>
+                        )}
+
+                        {activeTab !== 'exchange' && activeTab !== 'weather' && currentDay && (
+                            <div className="fade-in pb-24">
+                                {/* 新增：行程輸入表單移到這裡 (上方) */}
+                                <AddActivityForm onAdd={(time, loc) => addActivity(currentDay.id, time, loc)} />
+
+                                <div className="flex justify-between items-end px-2 mb-3">
+                                    <div className="text-indigo-900 font-bold opacity-50 text-sm uppercase tracking-wider">{currentDay.dayTitle} 行程</div>
+                                    <button onClick={() => deleteDay(currentDay.id)} className="text-xs text-red-400 hover:text-red-600 hover:underline flex items-center gap-1">
+                                        <Trash2Icon className="w-3 h-3" /> 刪除這天
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {currentDay.activities.length === 0 ? (
+                                        <div className="text-center py-10 bg-white rounded-2xl border border-dashed border-slate-300">
+                                            <div className="text-slate-400 mb-2">👋 這裡空空的</div>
+                                            <div className="text-xs text-slate-400">使用上方表單新增第一個景點！</div>
+                                        </div>
+                                    ) : (
+                                        currentDay.activities.map(act => (
+                                            <ActivityItem 
+                                                key={act.id} 
+                                                act={act} 
+                                                onDelete={()=>deleteActivity(currentDay.id, act.id)}
+                                                onUpdate={(actId, t, l) => updateActivity(currentDay.id, actId, t, l)}
+                                            />
+                                        ))
+                                    )}
+                                </div>
                             </div>
-                            <div className="relative flex-grow">
-                                <MapPinIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                                <input
-                                    type="text"
-                                    placeholder="輸入地點..."
-                                    required
-                                    value={newLocation}
-                                    onChange={(e) => setNewLocation(e.target.value)}
-                                    className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm text-slate-700 shadow-sm placeholder:text-slate-400 transition-all"
-                                />
-                            </div>
-                            <button
-                                type="submit"
-                                className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 whitespace-nowrap"
-                            >
-                                加入
-                            </button>
-                        </div>
-                    </form>
+                        )}
+                    </div>
                 </div>
             );
         };
