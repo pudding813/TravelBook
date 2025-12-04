@@ -1,1 +1,291 @@
 
+import React, { useState, useEffect } from 'react';
+import { Plus, MapPin, Trash2, Navigation, Calendar, Clock, Sun, Map, X } from 'lucide-react';
+
+const VibeTravelApp = () => {
+  // 初始狀態，嘗試從 localStorage 讀取，如果沒有則使用預設值
+  const [itinerary, setItinerary] = useState(() => {
+    const saved = localStorage.getItem('vibeTravelData');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return [];
+      }
+    }
+    return [
+      {
+        id: Date.now(),
+        dayTitle: 'Day 1',
+        activities: [
+          { id: 1, time: '09:00', location: '台北車站', note: '集合出發' },
+          { id: 2, time: '10:30', location: '陽明山擎天崗', note: '看牛牛' },
+        ],
+      },
+    ];
+  });
+
+  // 當 itinerary 改變時，儲存到 localStorage
+  useEffect(() => {
+    localStorage.setItem('vibeTravelData', JSON.stringify(itinerary));
+  }, [itinerary]);
+
+  // 新增一天
+  const addDay = () => {
+    const newDayNum = itinerary.length + 1;
+    const newDay = {
+      id: Date.now(),
+      dayTitle: `Day ${newDayNum}`,
+      activities: [],
+    };
+    setItinerary([...itinerary, newDay]);
+  };
+
+  // 刪除某一天
+  const deleteDay = (dayId) => {
+    if (confirm('確定要刪除這整天的行程嗎？')) {
+      setItinerary(itinerary.filter((day) => day.id !== dayId));
+    }
+  };
+
+  // 在某一天新增行程
+  const addActivity = (dayId, time, location) => {
+    if (!location.trim()) return;
+    
+    setItinerary(
+      itinerary.map((day) => {
+        if (day.id === dayId) {
+          return {
+            ...day,
+            activities: [
+              ...day.activities,
+              { id: Date.now(), time, location, note: '' },
+            ].sort((a, b) => a.time.localeCompare(b.time)), // 依時間排序
+          };
+        }
+        return day;
+      })
+    );
+  };
+
+  // 刪除行程
+  const deleteActivity = (dayId, activityId) => {
+    setItinerary(
+      itinerary.map((day) => {
+        if (day.id === dayId) {
+          return {
+            ...day,
+            activities: day.activities.filter((act) => act.id !== activityId),
+          };
+        }
+        return day;
+      })
+    );
+  };
+
+  // Google Maps 導航連結
+  const openGoogleMaps = (location) => {
+    const query = encodeURIComponent(location);
+    // 使用 dir/?api=1&destination= 格式可以直接進入導航模式
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${query}`, '_blank');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 text-slate-800 p-4 md:p-8 font-sans selection:bg-purple-200">
+      
+      {/* Header */}
+      <header className="max-w-4xl mx-auto mb-10 text-center space-y-2">
+        <div className="inline-flex items-center justify-center p-3 bg-white/60 backdrop-blur-md rounded-2xl shadow-sm mb-4">
+          <Map className="w-8 h-8 text-indigo-600 mr-2" />
+          <h1 className="text-3xl md:text-4xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 tracking-tight">
+            Vibe Travel
+          </h1>
+        </div>
+        <p className="text-slate-500 font-medium tracking-wide">
+          隨心規劃，即刻出發。
+        </p>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-3xl mx-auto space-y-8">
+        
+        {/* Controls */}
+        <div className="flex justify-between items-center px-2">
+          <span className="text-lg font-bold text-slate-700 flex items-center gap-2">
+            <Calendar className="w-5 h-5 text-purple-500" />
+            您的行程總覽
+          </span>
+          <button
+            onClick={addDay}
+            className="group flex items-center gap-2 bg-slate-900 hover:bg-indigo-600 text-white px-5 py-2.5 rounded-full transition-all duration-300 shadow-lg hover:shadow-indigo-500/30 active:scale-95"
+          >
+            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+            <span>新增一天</span>
+          </button>
+        </div>
+
+        {/* Days List */}
+        {itinerary.length === 0 ? (
+          <div className="text-center py-20 bg-white/40 backdrop-blur-sm rounded-3xl border border-white/50">
+            <Sun className="w-16 h-16 text-yellow-400 mx-auto mb-4 animate-pulse" />
+            <h3 className="text-xl font-bold text-slate-600">還沒有行程規劃</h3>
+            <p className="text-slate-400 mt-2">點擊右上角的按鈕開始您的旅程吧！</p>
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {itinerary.map((day, index) => (
+              <DayCard
+                key={day.id}
+                day={day}
+                index={index}
+                onAddActivity={addActivity}
+                onDeleteActivity={deleteActivity}
+                onDeleteDay={deleteDay}
+                onNavigate={openGoogleMaps}
+              />
+            ))}
+          </div>
+        )}
+      </main>
+
+      <footer className="max-w-4xl mx-auto mt-20 text-center text-slate-400 text-sm">
+        <p>© 2025 Vibe Travel App. Designed for Travelers.</p>
+      </footer>
+    </div>
+  );
+};
+
+// 子元件：單日卡片
+const DayCard = ({ day, index, onAddActivity, onDeleteActivity, onDeleteDay, onNavigate }) => {
+  const [newTime, setNewTime] = useState('09:00');
+  const [newLocation, setNewLocation] = useState('');
+
+  const handleAdd = (e) => {
+    e.preventDefault();
+    if (!newLocation) return;
+    onAddActivity(day.id, newTime, newLocation);
+    setNewLocation(''); // 清空輸入框
+  };
+
+  return (
+    <div className="relative bg-white/70 backdrop-blur-xl rounded-3xl shadow-xl border border-white/60 overflow-hidden transition-all hover:shadow-2xl duration-500">
+      
+      {/* Day Header */}
+      <div className="bg-gradient-to-r from-indigo-500/10 to-purple-500/10 p-5 flex justify-between items-center border-b border-indigo-100">
+        <h2 className="text-xl font-bold text-indigo-900 flex items-center gap-2">
+          <span className="bg-white text-indigo-600 px-3 py-1 rounded-lg shadow-sm text-sm">
+            Day {index + 1}
+          </span>
+          <span className="opacity-70 text-sm font-normal text-indigo-800">
+            {day.activities.length} 個景點
+          </span>
+        </h2>
+        <button
+          onClick={() => onDeleteDay(day.id)}
+          className="text-slate-400 hover:text-red-500 p-2 hover:bg-red-50 rounded-full transition-colors"
+          title="刪除這一天"
+        >
+          <Trash2 className="w-5 h-5" />
+        </button>
+      </div>
+
+      {/* Activities List */}
+      <div className="p-5 space-y-4">
+        {day.activities.length === 0 && (
+          <div className="text-center py-6 text-slate-400 text-sm italic border-2 border-dashed border-slate-200 rounded-xl">
+            這天還沒有安排行程，新增一個地點吧！
+          </div>
+        )}
+
+        <div className="relative">
+          {/* Vertical Line for timeline effect */}
+          {day.activities.length > 0 && (
+            <div className="absolute left-[2.85rem] top-4 bottom-4 w-0.5 bg-indigo-100 rounded-full"></div>
+          )}
+
+          <ul className="space-y-4">
+            {day.activities.map((activity) => (
+              <li key={activity.id} className="group relative flex items-start gap-4">
+                {/* Time Bubble */}
+                <div className="flex-shrink-0 w-20 pt-1">
+                  <div className="bg-white border border-indigo-100 text-indigo-600 text-xs font-bold px-2 py-1.5 rounded-lg text-center shadow-sm z-10 relative">
+                    {activity.time}
+                  </div>
+                </div>
+
+                {/* Content Card */}
+                <div className="flex-grow bg-white border border-slate-100 rounded-2xl p-4 shadow-sm group-hover:shadow-md transition-shadow flex justify-between items-center z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center text-indigo-500">
+                      <MapPin className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-lg leading-tight">
+                        {activity.location}
+                      </h4>
+                      <p className="text-xs text-slate-400 mt-1">
+                        點擊右側按鈕導航
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => onNavigate(activity.location)}
+                      className="p-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-200 transition-all hover:scale-105 active:scale-95"
+                      title="導航到此地"
+                    >
+                      <Navigation className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDeleteActivity(day.id, activity.id)}
+                      className="p-2 text-slate-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Add Activity Form */}
+      <form onSubmit={handleAdd} className="bg-slate-50/80 p-4 border-t border-slate-100">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative">
+            <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="time"
+              required
+              value={newTime}
+              onChange={(e) => setNewTime(e.target.value)}
+              className="w-full sm:w-auto pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm font-medium text-slate-700 shadow-sm"
+            />
+          </div>
+          <div className="relative flex-grow">
+            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="輸入地點 (例如：台北101、日月潭...)"
+              required
+              value={newLocation}
+              onChange={(e) => setNewLocation(e.target.value)}
+              className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 bg-white text-sm text-slate-700 shadow-sm placeholder:text-slate-400"
+            />
+          </div>
+          <button
+            type="submit"
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all active:scale-95 whitespace-nowrap"
+          >
+            加入行程
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+};
+
+export default VibeTravelApp;
+
